@@ -1,3 +1,4 @@
+
 GRANT REPLICATION SLAVE ON *.* TO 'oracle'@'%' IDENTIFIED BY 'rawdbdata';
 
 
@@ -9,7 +10,7 @@ CREATE TABLE v_entity_ap_rel_remote (
   apmac varchar(12),
   IndoorSecondsThrehold bigint(11),
   LeaveMinutesThrehold bigint(11) 
-) ENGINE=FEDERATED CONNECTION='mysql://fereader:oracle123456@121.40.48.169:8301/maindb/v_entity_ap_rel' ;
+) ENGINE=FEDERATED CONNECTION='mysql://fereader:oracle123456@ipaddress:8301/maindb/v_entity_ap_rel' ;
 
 create table v_entity_ap_rel(
   entityid int(11) not null,
@@ -45,7 +46,7 @@ BEGIN
     DECLARE ids INT;
     DECLARE indoors INT;
     DECLARE leaves INT;
-    DECLARE cur CURSOR FOR select entityid,IndoorSecondsThrehold,LeaveMinutesThrehold from v_entity_ap_rel where apmac=NEW.ApMacAddress AND case when NEW.rssi>v_entity_ap_rel.rssi then 1 else 0 end=1;
+    DECLARE cur CURSOR FOR select entityid,IndoorSecondsThrehold,LeaveMinutesThrehold from v_entity_ap_rel where apmac=NEW.ApMacAddress AND case when NEW.rssi>rssi then 1 else 0 end=1;
     DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
     OPEN cur;
         ins_loop: LOOP
@@ -53,8 +54,8 @@ BEGIN
             IF done THEN
                 LEAVE ins_loop;
             END IF;
-            IF CURDATE() = date(NEW.Time) Then
-                INSERT INTO raw_data_rep(entityid,sourcemac,time,IndoorSecondsThrehold,LeaveMinutesThrehold) VALUES (ids, NEW.SourceMacAddress,unix_timestamp(NEW.UpdatingTime),indoors,leaves);
+            IF  NEW.Time +INTERVAL 5 minute > NEW.UpdatingTime Then
+                INSERT INTO raw_data_rep(entityid,sourcemac,time,IndoorSecondsThrehold,LeaveMinutesThrehold) VALUES (ids, NEW.SourceMacAddress,unix_timestamp(NEW.time),indoors,leaves);
             END IF;
         END LOOP;
     CLOSE cur;
@@ -63,9 +64,9 @@ DELIMITER ;
 
 
 
-./kafka-topics.sh --zookeeper namenode:2181 --delete --topic oggtopic
-./kafka-topics.sh --zookeeper namenode:2181 --create --topic oggtopic --partitions 1 --replication-factor 1
-./kafka-console-consumer.sh --zookeeper namenode:2181 --topic oggtopic 
+./kafka-topics.sh --zookeeper namenode:2181 --delete --topic ogg
+./kafka-topics.sh --zookeeper namenode:2181 --create --topic ogg --partitions 3 --replication-factor 1
+./kafka-console-consumer.sh --zookeeper namenode:2181 --topic rawdata --from-beginning | jq '.'	
 
 SELECT DISTINCT tentity.ID as entityid,
                 tvbox.indoorrssi as rssi,
