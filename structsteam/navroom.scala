@@ -40,8 +40,8 @@ object navroom {
 
 
     val surl="jdbc:mysql://namenode:3306/metadb?useSSL=false"
-    val user="sparkdb"
-    val pwd="sparkdbgood"
+    val user="xxxx"
+    val pwd="xxxxxxxx"
     val writer = new JDBCSink(surl, user, pwd)
 
 
